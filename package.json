@@ -1,0 +1,27 @@
+{
+  "name": "sqlite3-trans",
+  "version": "1.0.0",
+  "description": "Proper transaction support for node-sqlite3",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NuSkooler/node-sqlite3-trans.git"
+  },
+  "keywords": [
+    "node-sqlite3",
+    "sqlite3",
+    "transaction"
+  ],
+  "dependencies": {
+    "lodash" :"^4.17.4"
+  },
+  "author": "Bryan D. Ashby <bryan@l33t.codes>",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/NuSkooler/node-sqlite3-trans/issues"
+  },
+  "homepage": "https://github.com/NuSkooler/node-sqlite3-trans#readme"
+}
