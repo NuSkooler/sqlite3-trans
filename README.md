@@ -1,8 +1,14 @@
-# node-sqlite3-trans
+# sqlite3-trans
 Proper transaction support for [node-sqlite3](https://github.com/mapbox/node-sqlite3).
 
 ## What?
 Wraps [node-sqlite3](https://github.com/mapbox/node-sqlite3) database instances to provide proper transaction support — specifically when utilizing async operations. This module is a more modern port of the no longer maintained [sqlite3-transactions](https://github.com/Strix-CZ/sqlite3-transactions).
+
+**Differences**
+* ES6+
+* lodash vs underscore
+* Don't use deprecated calls
+* I'll try to fix bugs. Please report 'em.
 
 ## Motivation
 

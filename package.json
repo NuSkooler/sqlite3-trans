@@ -12,11 +12,16 @@
   },
   "keywords": [
     "node-sqlite3",
+    "sqlite",
     "sqlite3",
-    "transaction"
+    "transaction",
+    "transactions"
   ],
   "dependencies": {
-    "lodash" :"^4.17.4"
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "sqlite3" : "^3.1.11"
   },
   "author": "Bryan D. Ashby <bryan@l33t.codes>",
   "license": "BSD-2-Clause",
