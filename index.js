@@ -38,6 +38,18 @@ module.exports = class TransDatabase extends EventEmitter {
 				this.currentTransaction.rollback( () => { } );
 			}
 		});
+
+		//
+		//	wrap prepare which is handled without locking logic
+		//	directly, but instead with inner methods
+		//
+		const self = this;
+		this.prepare = function() {
+			const oldStatement	= self.db.prepare.apply(self.db, arguments);
+			const newStatement	= new EventEmitter();
+			self._wrapDbObject(self, newStatement, oldStatement);
+			return newStatement;
+		}
 	}
 
 	static wrap(db) {
@@ -151,7 +163,7 @@ module.exports = class TransDatabase extends EventEmitter {
 		return !NON_PROXIED_METHOD_NAMES.includes(methodName);
 	}
 
-	_isLockedMethod(methodName) {
+	static _isLockedMethod(methodName) {
 		return LOCKING_METHODS.includes(methodName);
 	}
 
@@ -159,7 +171,7 @@ module.exports = class TransDatabase extends EventEmitter {
 		return function() {
 			const args = arguments;
 
-			const lockedMethod = this._isLockedMethod(methodName);
+			const lockedMethod = TransDatabase._isLockedMethod(methodName);
 
 			if(lockedMethod) {
 				
