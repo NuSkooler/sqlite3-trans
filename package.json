@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NuSkooler/node-sqlite3-trans.git"
+    "url": "git+https://github.com/NuSkooler/sqlite3-trans.git"
   },
   "keywords": [
     "node-sqlite3",
@@ -26,7 +26,7 @@
   "author": "Bryan D. Ashby <bryan@l33t.codes>",
   "license": "BSD-2-Clause",
   "bugs": {
-    "url": "https://github.com/NuSkooler/node-sqlite3-trans/issues"
+    "url": "https://github.com/NuSkooler/sqlite3-trans/issues"
   },
-  "homepage": "https://github.com/NuSkooler/node-sqlite3-trans#readme"
+  "homepage": "https://github.com/NuSkooler/sqlite3-trans#readme"
 }
