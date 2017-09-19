@@ -227,7 +227,7 @@ module.exports = class TransDatabase extends EventEmitter {
 				transDb.queue.push({
 					type : lockedMethod ? 'lock' : 'simple',
 					object,
-					method,
+					method : methodName,
 					args
 				});
 			}

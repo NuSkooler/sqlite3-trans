@@ -1,6 +1,6 @@
 {
   "name": "sqlite3-trans",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Proper transaction support for node-sqlite3",
   "main": "index.js",
   "scripts": {
