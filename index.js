@@ -177,7 +177,7 @@ module.exports = class TransDatabase extends EventEmitter {
 				
 				function missingCallback(err) {
 					if(err) {
-						transDb.db.emit('error', e);
+						transDb.db.emit('error', err);
 					}
 				}
 
