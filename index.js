@@ -2,245 +2,263 @@
 'use strict';
 
 //	deps
-const EventEmitter	= require('events').EventEmitter;
+const EventEmitter = require('events').EventEmitter;
 
-const { 
-	functionsIn, 
-	isFunction,
-	bind,
-}					= require('lodash');
+const { functionsIn, isFunction, bind } = require('lodash');
 
 const NON_PROXIED_METHOD_NAMES = [
-	'emit', 'addListener', 'setMaxListeners', 'on', 'once', 'removeListener',
-	'removeAllListeners', 'listeners', 'prepare',
+    'emit',
+    'addListener',
+    'setMaxListeners',
+    'on',
+    'once',
+    'removeListener',
+    'removeAllListeners',
+    'listeners',
+    'prepare',
 ];
 
-const LOCKING_METHODS = [
-	'exec', 'run', 'get', 'all', 'each', 'map', 'finalize', 'reset'
-];
+const LOCKING_METHODS = ['exec', 'run', 'get', 'all', 'each', 'map', 'finalize', 'reset'];
 
 module.exports = class TransDatabase extends EventEmitter {
-	constructor(db) {
-		super();
-		
-		this.db			= db;
-		this.queue		= [];
-		this.lockCount	 = 0;
+    constructor(db) {
+        super();
 
-		this.db.serialize();
+        this.db = db;
+        this.queue = [];
+        this.lockCount = 0;
 
-		this._exec	= bind(this.db.exec, this.db);
+        this.db.serialize();
 
-		this._wrapDbObject(this, this, this.db);
+        this._exec = bind(this.db.exec, this.db);
 
-		this.db.on('error', () => {
-			if(this.currentTransaction) {
-				this.currentTransaction.rollback( () => { } );
-			}
-		});
+        this._wrapDbObject(this, this, this.db);
 
-		//
-		//	wrap prepare which is handled without locking logic
-		//	directly, but instead with inner methods
-		//
-		const self = this;
-		this.prepare = function() {
-			const oldStatement	= self.db.prepare.apply(self.db, arguments);
-			const newStatement	= new EventEmitter();
-			self._wrapDbObject(self, newStatement, oldStatement);
-			return newStatement;
-		}
-	}
+        this.db.on('error', () => {
+            if (this.currentTransaction) {
+                this.currentTransaction.rollback(() => {});
+            }
+        });
 
-	static wrap(db) {
-		return new TransDatabase(db);
-	}
+        //
+        //	wrap prepare which is handled without locking logic
+        //	directly, but instead with inner methods
+        //
+        const self = this;
+        this.prepare = function () {
+            const oldStatement = self.db.prepare.apply(self.db, arguments);
+            const newStatement = new EventEmitter();
+            self._wrapDbObject(self, newStatement, oldStatement);
+            return newStatement;
+        };
+    }
 
-	beginTransaction(cb) {
-		if(this.currentTransaction) {
-			return this.queue.push({
-				type	: 'transaction',
-				object	: this,
-				method	: 'beginTransaction',
-				args	: arguments,
-			});
-		}
+    static wrap(db) {
+        return new TransDatabase(db);
+    }
 
-		const trans				= this.db;
-		let finished			= false;
-		this.currentTransaction	= trans;
-		const self				= this;
+    beginTransaction(cb) {
+        if (this.currentTransaction) {
+            return this.queue.push({
+                type: 'transaction',
+                object: this,
+                method: 'beginTransaction',
+                args: arguments,
+            });
+        }
 
-		function finishTransaction(err, callback) {
-			finished				= true;
-			self.currentTransaction	= null;
-			self._flushQueue();
-			return callback(err);
-		}
+        const trans = this.db;
+        let finished = false;
+        this.currentTransaction = trans;
+        const self = this;
 
-		trans.commit = function(callback) {
-			if(finished) {
-				return callback(new Error('Transaction already finished'));
-			}
+        function finishTransaction(err, callback) {
+            finished = true;
+            self.currentTransaction = null;
+            self._flushQueue();
+            return callback(err);
+        }
 
-			self._wait( () => {
-				self._exec('COMMIT;', err => {
-					return finishTransaction(err, callback);
-				});
-			});
-		}
+        trans.commit = function (callback) {
+            if (finished) {
+                return callback(new Error('Transaction already finished'));
+            }
 
-		trans.rollback = function(callback) {
-			if(finished) {
-				return callback(new Error('Transaction already finished'));
-			}
+            self._wait(() => {
+                self._exec('COMMIT;', err => {
+                    return finishTransaction(err, callback);
+                });
+            });
+        };
 
-			self._wait( () => {
-				self._exec('ROLLBACK;', err => {
-					return finishTransaction(err, callback);
-				});
-			});
-		}
-		
-		//	OK, now begin
-		this._wait(err => {
-			if(err) {
-				finishTransaction(err, cb);
-			}
+        trans.rollback = function (callback) {
+            if (finished) {
+                return callback(new Error('Transaction already finished'));
+            }
 
-			self._exec('BEGIN;', err => {
-				if(err) {
-					return cb(err);
-				}
+            self._wait(() => {
+                self._exec('ROLLBACK;', err => {
+                    return finishTransaction(err, callback);
+                });
+            });
+        };
 
-				return cb(null, trans);
-			});
-		});
-	}
+        //	OK, now begin
+        this._wait(err => {
+            if (err) {
+                finishTransaction(err, cb);
+            }
 
-	_wait(cb) {
-		const self = this;
+            self._exec('BEGIN;', err => {
+                if (err) {
+                    return cb(err);
+                }
 
-		function check() {
-			if(0 === self.lockCount) {
-				return cb();
-			} else {
-				setImmediate(check);
-			}
-		}
+                return cb(null, trans);
+            });
+        });
+    }
 
-		return check();
-	}
+    _wait(cb) {
+        const self = this;
 
-	_flushQueue() {
-		while(this.queue.length > 0) {
-			const queuedItem = this.queue.shift();
+        function check() {
+            if (0 === self.lockCount) {
+                return cb();
+            } else {
+                setImmediate(check);
+            }
+        }
 
-			if('lock' === queuedItem.type) {
-				++this.lockCount;
-			}
+        return check();
+    }
 
-			//	perform queued call
-			queuedItem.object[queuedItem.method].apply(queuedItem.object, queuedItem.args);
+    _flushQueue() {
+        while (this.queue.length > 0) {
+            const queuedItem = this.queue.shift();
 
-			if('transaction' === queuedItem.type) {
-				break;
-			}
-		}
-	}
+            if ('lock' === queuedItem.type) {
+                ++this.lockCount;
+            }
 
-	_wrapDbObject(transDb, target, source) {
-		functionsIn(source)
-			.filter( methodName => this._isProxyMethod(methodName) ).forEach(methodName => {
-				target[methodName] = this._wrapDbMethod(transDb, source, methodName);
-			}
-		);
+            //	perform queued call
+            queuedItem.object[queuedItem.method].apply(
+                queuedItem.object,
+                queuedItem.args
+            );
 
-		this._interceptEmittedEvents(target, source, bind(target.emit, target));
-	}
+            if ('transaction' === queuedItem.type) {
+                break;
+            }
+        }
+    }
 
-	_isProxyMethod(methodName) {
-		return !NON_PROXIED_METHOD_NAMES.includes(methodName);
-	}
+    _getSourceMethods(source) {
+        let properties = new Set();
+        let currentObj = source;
 
-	static _isLockedMethod(methodName) {
-		return LOCKING_METHODS.includes(methodName);
-	}
+        do {
+            Object.getOwnPropertyNames(currentObj).forEach(item => properties.add(item));
+        } while ((currentObj = Object.getPrototypeOf(currentObj)));
 
-	_wrapDbMethod(transDb, object, methodName) {
-		return function() {
-			const args = arguments;
+        return [...properties.keys()].filter(item => typeof source[item] === 'function');
+    }
 
-			const lockedMethod = TransDatabase._isLockedMethod(methodName);
+    _wrapDbObject(transDb, target, source) {
+        this._getSourceMethods(source)
+            .filter(methodName => this._isProxyMethod(methodName))
+            .forEach(methodName => {
+                target[methodName] = this._wrapDbMethod(transDb, source, methodName);
+            });
 
-			if(lockedMethod) {
-				
-				function missingCallback(err) {
-					if(err) {
-						transDb.db.emit('error', err);
-					}
-				}
+        this._interceptEmittedEvents(target, source, bind(target.emit, target));
+    }
 
-				//	ensure each rolls back on error to decrement |lockCount|
-				if('each' === methodName) {
-					if(args.length < 2 || 
-						!isFunction(args[args.length - 1]) && !isFunction(args[args.length- 2]))
-					{
-						args[args.length] = args[args.length + 1] = missingCallback;
-						args.length += 2;
-					} else if(isFunction(args[args.length- 1]) && !isFunction(args[args.length - 2])) {
-						args[args.length] = missingCallback;
-						args.length += 1;
-					}
-				}
+    _isProxyMethod(methodName) {
+        return !NON_PROXIED_METHOD_NAMES.includes(methodName);
+    }
 
-				let originalCallback;
-				
-				const newCallback = function() {
-					if(transDb.lockCount < 1) {
-						throw new Error('Locks are not balanced!');
-					}
+    static _isLockedMethod(methodName) {
+        return LOCKING_METHODS.includes(methodName);
+    }
 
-					--transDb.lockCount;
+    _wrapDbMethod(transDb, object, methodName) {
+        return function () {
+            const args = arguments;
 
-					originalCallback.apply(this, arguments);
-				}
+            const lockedMethod = TransDatabase._isLockedMethod(methodName);
 
-				if(args.length > 0 && isFunction(args[args.length- 1])) {
-					originalCallback = args[args.length - 1];
-					args[args.length - 1] = newCallback;
-				} else {
-					originalCallback 	= missingCallback;
-					args[args.length]	= newCallback;
-					args.length	+= 1;
-				}
-			}
+            if (lockedMethod) {
+                function missingCallback(err) {
+                    if (err) {
+                        transDb.db.emit('error', err);
+                    }
+                }
 
-			if(!this.currentTransaction) {
-				if(lockedMethod) {
-					transDb.lockCount++;
-				}
-				
-				object[methodName].apply(object, args);	//	call inner
-			} else {
-				//	already in transaction; defer
-				transDb.queue.push({
-					type : lockedMethod ? 'lock' : 'simple',
-					object,
-					method : methodName,
-					args
-				});
-			}
+                //	ensure each rolls back on error to decrement |lockCount|
+                if ('each' === methodName) {
+                    if (
+                        args.length < 2 ||
+                        (!isFunction(args[args.length - 1]) &&
+                            !isFunction(args[args.length - 2]))
+                    ) {
+                        args[args.length] = args[args.length + 1] = missingCallback;
+                        args.length += 2;
+                    } else if (
+                        isFunction(args[args.length - 1]) &&
+                        !isFunction(args[args.length - 2])
+                    ) {
+                        args[args.length] = missingCallback;
+                        args.length += 1;
+                    }
+                }
 
-		};
-	}
+                let originalCallback;
 
-	_interceptEmittedEvents(target, emitter, handler) {
-		const oldEmit = emitter.emit;
-		
-		emitter.emit = function() {
-			handler.apply(target, arguments);
-			oldEmit.apply(emitter, arguments);
-		};
-	}
+                const newCallback = function () {
+                    if (transDb.lockCount < 1) {
+                        throw new Error('Locks are not balanced!');
+                    }
+
+                    --transDb.lockCount;
+
+                    originalCallback.apply(this, arguments);
+                };
+
+                if (args.length > 0 && isFunction(args[args.length - 1])) {
+                    originalCallback = args[args.length - 1];
+                    args[args.length - 1] = newCallback;
+                } else {
+                    originalCallback = missingCallback;
+                    args[args.length] = newCallback;
+                    args.length += 1;
+                }
+            }
+
+            if (!this.currentTransaction) {
+                if (lockedMethod) {
+                    transDb.lockCount++;
+                }
+
+                object[methodName].apply(object, args); //	call inner
+            } else {
+                //	already in transaction; defer
+                transDb.queue.push({
+                    type: lockedMethod ? 'lock' : 'simple',
+                    object,
+                    method: methodName,
+                    args,
+                });
+            }
+        };
+    }
+
+    _interceptEmittedEvents(target, emitter, handler) {
+        const oldEmit = emitter.emit;
+
+        emitter.emit = function () {
+            handler.apply(target, arguments);
+            oldEmit.apply(emitter, arguments);
+        };
+    }
 };
