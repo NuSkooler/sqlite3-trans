@@ -1,32 +1,33 @@
 {
-  "name": "sqlite3-trans",
-  "version": "1.2.2",
-  "description": "Proper transaction support for node-sqlite3",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/NuSkooler/sqlite3-trans.git"
-  },
-  "keywords": [
-    "node-sqlite3",
-    "sqlite",
-    "sqlite3",
-    "transaction",
-    "transactions"
-  ],
-  "dependencies": {
-    "lodash": "^4.17.15"
-  },
-  "devDependencies": {
-    "sqlite3": "^4.1.0"
-  },
-  "author": "Bryan D. Ashby <bryan@l33t.codes>",
-  "license": "BSD-2-Clause",
-  "bugs": {
-    "url": "https://github.com/NuSkooler/sqlite3-trans/issues"
-  },
-  "homepage": "https://github.com/NuSkooler/sqlite3-trans#readme"
+    "name": "sqlite3-trans",
+    "version": "1.3.0",
+    "description": "Proper transaction support for node-sqlite3",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/NuSkooler/sqlite3-trans.git"
+    },
+    "keywords": [
+        "node-sqlite3",
+        "sqlite",
+        "sqlite3",
+        "transaction",
+        "transactions"
+    ],
+    "dependencies": {
+        "lodash": "^4.17.15"
+    },
+    "devDependencies": {
+        "sqlite3": "5.0.11",
+        "prettier": "2.7.1"
+    },
+    "author": "Bryan D. Ashby <bryan@l33t.codes>",
+    "license": "BSD-2-Clause",
+    "bugs": {
+        "url": "https://github.com/NuSkooler/sqlite3-trans/issues"
+    },
+    "homepage": "https://github.com/NuSkooler/sqlite3-trans#readme"
 }
